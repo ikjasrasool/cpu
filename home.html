@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Scheduling Simulator</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* General styles */
+        body {
+            background-color: #f8f9fa;
+        }
+
+        h1, h3 {
+            color: #343a40;
+        }
+
+        /* Gantt chart styles */
+        #gantt-chart {
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+            background-color: #e9ecef;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .gantt-block {
+            display: inline-block;
+            border: 1px solid #000;
+            padding: 10px;
+            margin: 2px;
+            background-color: #007bff;
+            color: #fff;
+            text-align: center;
+            flex: 1;
+        }
+
+        .gantt-block + .gantt-block {
+            margin-left: 5px;
+        }
+
+        /* Process details styles */
+        #process-details, #process-times {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            background-color: #ffffff;
+        }
+
+        .process-details, .process-times {
+            margin-bottom: 10px;
+        }
+
+        .total-times {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            background-color: #ffffff;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Form styles */
+        .form-row {
+            margin-bottom: 10px;
+        }
+
+        #processes .form-row {
+            background-color: #e9ecef;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+
+        #add-process {
+            margin-top: 10px;
+        }
+
+        button[type="submit"] {
+            margin-top: 10px;
+        }
+
+        /* Button styles */
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        /* Input styles */
+        .form-control {
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* Container styles */
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Process Scheduling Simulator</h1>
+    <form id="process-form">
+        <div class="form-row mb-3">
+            <div class="col">
+                <select class="form-control" id="algorithm" required>
+                    <option value="" disabled selected>Select Algorithm</option>
+                    <option value="fifo">FIFO</option>
+                    <option value="sjf">SJF</option>
+                    <option value="srtf">SRTF</option>
+                    <option value="rr">Round Robin</option>
+                </select>
+            </div>
+            <div class="col" id="quantum-input" style="display: none;">
+                <input type="number" class="form-control" id="quantum" placeholder="Quantum Time">
+            </div>
+        </div>
+        <div id="processes"></div>
+        <button type="button" class="btn btn-primary" id="add-process">Add Process</button>
+        <button type="submit" class="btn btn-success ml-2">Calculate</button>
+    </form>
+    <div class="mt-5">
+        <h3>Gantt Chart</h3>
+        <div id="gantt-chart" class="d-flex"></div>
+    </div>
+    <div class="mt-5">
+        <h3>Process Details</h3>
+        <div id="process-details"></div>
+        <div id="process-times"></div>
+    </div>
+    <div id="total-times" class="mt-4"></div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('process-form');
+        const addProcessButton = document.getElementById('add-process');
+        const algorithmSelect = document.getElementById('algorithm');
+        const quantumInput = document.getElementById('quantum-input');
+        const quantumField = document.getElementById('quantum');
+        const ganttChart = document.getElementById('gantt-chart');
+        const processDetails = document.getElementById('process-details');
+        const processTimes = document.getElementById('process-times');
+        const totalTimes = document.getElementById('total-times');
+
+        // Add process row
+        addProcessButton.addEventListener('click', () => {
+            const processRow = document.createElement('div');
+            processRow.classList.add('form-row', 'mb-2', 'process-row');
+            processRow.innerHTML = `
+                    <div class="col">
+                        <input type="text" class="form-control" placeholder="Process Name" required>
+                    </div>
+                    <div class="col">
+                        <input type="number" class="form-control" placeholder="Arrival Time" required>
+                    </div>
+                    <div class="col">
+                        <input type="number" class="form-control" placeholder="Burst Time" required>
+                    </div>
+                    <div class="col">
+                        <button type="button" class="btn btn-danger remove-process">Remove</button>
+                    </div>
+                `;
+            document.getElementById('processes').appendChild(processRow);
+
+            // Attach event listener to the remove button
+            processRow.querySelector('.remove-process').addEventListener('click', (e) => {
+                e.target.closest('.process-row').remove();
+            });
+        });
+
+        // Show/Hide Quantum Field based on selected algorithm
+        algorithmSelect.addEventListener('change', () => {
+            if (algorithmSelect.value === 'rr') {
+                quantumInput.style.display = 'block';
+            } else {
+                quantumInput.style.display = 'none';
+            }
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            // Get process data
+            const processes = [];
+            document.querySelectorAll('.process-row').forEach(row => {
+                const processName = row.children[0].children[0].value;
+                const arrivalTime = parseInt(row.children[1].children[0].value);
+                const burstTime = parseInt(row.children[2].children[0].value);
+                processes.push({ name: processName, arrivalTime, burstTime, remainingTime: burstTime });
+            });
+
+            const algorithm = algorithmSelect.value;
+            let quantum = 0;
+            if (algorithm === 'rr') {
+                quantum = parseInt(quantumField.value);
+            }
+
+            // Clear previous results
+            ganttChart.innerHTML = '';
+            processDetails.innerHTML = '';
+            processTimes.innerHTML = '';
+            totalTimes.innerHTML = '';
+
+            // Run selected algorithm
+            let results = [];
+            switch (algorithm) {
+                case 'fifo':
+                    results = fifo(processes);
+                    break;
+                case 'sjf':
+                    results = sjf(processes);
+                    break;
+                case 'srtf':
+                    results = srtf(processes);
+                    break;
+                case 'rr':
+                    results = rr(processes, quantum);
+                    break;
+            }
+
+            // Display Gantt chart
+            results.forEach(block => {
+                const ganttBlock = document.createElement('div');
+                ganttBlock.classList.add('gantt-block');
+                ganttBlock.style.flex = block.duration;
+                ganttBlock.textContent = block.name;
+                ganttChart.appendChild(ganttBlock);
+            });
+
+            // Display process details
+            processes.forEach(process => {
+                const detail = document.createElement('div');
+                detail.classList.add('process-details');
+                detail.textContent = `Process ${process.name}: Arrival Time = ${process.arrivalTime}, Burst Time = ${process.burstTime}`;
+                processDetails.appendChild(detail);
+            });
+
+            // Calculate waiting time and turnaround time
+            const waitingTimes = calculateWaitingTime(results, processes);
+            const turnaroundTimes = calculateTurnaroundTime(results, processes);
+
+            // Display process times
+            processes.forEach((process, index) => {
+                const timeDetail = document.createElement('div');
+                timeDetail.classList.add('process-times');
+                timeDetail.textContent = `Process ${process.name}: Waiting Time = ${waitingTimes[index]}, Turnaround Time = ${turnaroundTimes[index]}`;
+                processTimes.appendChild(timeDetail);
+            });
+
+            // Display total times
+            const totalWaitingTime = waitingTimes.reduce((acc, cur) => acc + cur, 0);
+            const totalTurnaroundTime = turnaroundTimes.reduce((acc, cur) => acc + cur, 0);
+            totalTimes.innerHTML = `
+                    <div>Total Waiting Time: ${totalWaitingTime}</div>
+                    <div>Total Turnaround Time: ${totalTurnaroundTime}</div>
+                `;
+        });
+
+        // FIFO algorithm
+        function fifo(processes) {
+            // Sort by arrival time
+            processes.sort((a, b) => a.arrivalTime - b.arrivalTime);
+
+            let currentTime = 0;
+            return processes.map(process => {
+                const startTime = Math.max(currentTime, process.arrivalTime);
+                const duration = process.burstTime;
+                currentTime = startTime + duration;
+                return { name: process.name, startTime, duration };
+            });
+        }
+
+        // SJF algorithm (Non-preemptive)
+        function sjf(processes) {
+            // Sort by arrival time, then by burst time
+            processes.sort((a, b) => a.arrivalTime - b.arrivalTime || a.burstTime - b.burstTime);
+
+            let currentTime = 0;
+            const completed = [];
+
+            while (processes.length > 0) {
+                const availableProcesses = processes.filter(p => p.arrivalTime <= currentTime);
+                if (availableProcesses.length > 0) {
+                    const shortestJob = availableProcesses.reduce((prev, curr) => prev.burstTime < curr.burstTime ? prev : curr);
+                    const startTime = Math.max(currentTime, shortestJob.arrivalTime);
+                    const duration = shortestJob.burstTime;
+                    currentTime = startTime + duration;
+                    completed.push({ name: shortestJob.name, startTime, duration });
+                    processes = processes.filter(p => p !== shortestJob);
+                } else {
+                    currentTime++;
+                }
+            }
+
+            return completed;
+        }
+
+        // SRTF algorithm (Preemptive)
+        function srtf(processes) {
+            let n = processes.length;
+            let currentTime = 0;
+            let completed = 0;
+            let ganttChart = [];
+
+            // Clone the processes to avoid modifying the original array
+            let processList = processes.map(p => ({ ...p, remainingTime: p.burstTime }));
+
+            while (completed < n) {
+                let idx = -1;
+                let minRemainingTime = Infinity;
+
+                for (let i = 0; i < n; i++) {
+                    if (processList[i].arrivalTime <= currentTime && processList[i].remainingTime > 0) {
+                        if (processList[i].remainingTime < minRemainingTime) {
+                            minRemainingTime = processList[i].remainingTime;
+                            idx = i;
+                        }
+                    }
+                }
+
+                if (idx !== -1) {
+                    let process = processList[idx];
+                    ganttChart.push({ name: process.name, startTime: currentTime, duration: 1 });
+                    process.remainingTime -= 1;
+                    currentTime++;
+                    if (process.remainingTime === 0) {
+                        process.completionTime = currentTime;
+                        completed++;
+                    }
+                } else {
+                    // If no process is ready to execute, increment the time
+                    currentTime++;
+                }
+            }
+
+            return ganttChart;
+        }
+
+        // Round Robin algorithm
+        function rr(processes, quantum) {
+            let n = processes.length;
+            let currentTime = 0;
+            let completed = 0;
+            let queue = [];
+            let ganttChart = [];
+
+            // Clone the processes to avoid modifying the original array
+            let processList = processes.map(p => ({ ...p, remainingTime: p.burstTime }));
+
+            // Initial queue with processes that have arrived by time 0
+            processList.forEach(p => {
+                if (p.arrivalTime <= currentTime) {
+                    queue.push(p);
+                }
+            });
+
+            while (completed < n) {
+                if (queue.length > 0) {
+                    let process = queue.shift();
+                    if (process.remainingTime > quantum) {
+                        currentTime += quantum;
+                        process.remainingTime -= quantum;
+                        ganttChart.push({ name: process.name, startTime: currentTime - quantum, duration: quantum });
+                    } else {
+                        currentTime += process.remainingTime;
+                        ganttChart.push({ name: process.name, startTime: currentTime - process.remainingTime, duration: process.remainingTime });
+                        process.remainingTime = 0;
+                        process.completionTime = currentTime;
+                        completed++;
+                    }
+                    // Add newly arrived processes to the queue
+                    processList.forEach(p => {
+                        if (p.arrivalTime <= currentTime && !queue.includes(p) && p.remainingTime > 0) {
+                            queue.push(p);
+                        }
+                    });
+                    // Re-add the current process if it hasn't finished yet
+                    if (process.remainingTime > 0) {
+                        queue.push(process);
+                    }
+                } else {
+                    // If the queue is empty, jump to the next available process
+                    currentTime++;
+                    processList.forEach(p => {
+                        if (p.arrivalTime <= currentTime && p.remainingTime > 0 && !queue.includes(p)) {
+                            queue.push(p);
+                        }
+                    });
+                }
+            }
+
+            return ganttChart;
+        }
+
+        function calculateWaitingTime(results, processes) {
+            const waitingTimes = processes.map(() => 0);
+            const processEndTimes = {};
+
+            results.forEach(block => {
+                if (!processEndTimes[block.name]) {
+                    processEndTimes[block.name] = block.startTime;
+                } else {
+                    waitingTimes[processes.findIndex(p => p.name === block.name)] += block.startTime - processEndTimes[block.name];
+                    processEndTimes[block.name] = block.startTime;
+                }
+                processEndTimes[block.name] += block.duration;
+            });
+
+            processes.forEach((process, index) => {
+                waitingTimes[index] += results.find(result => result.name === process.name).startTime - process.arrivalTime;
+            });
+
+            return waitingTimes;
+        }
+
+        function calculateTurnaroundTime(results, processes) {
+            const turnaroundTimes = processes.map(() => 0);
+            const processEndTimes = {};
+
+            results.forEach(block => {
+                processEndTimes[block.name] = (processEndTimes[block.name] || 0) + block.duration;
+            });
+
+            processes.forEach((process, index) => {
+                const endTime = results.filter(result => result.name === process.name).reduce((acc, cur) => acc + cur.duration, process.arrivalTime);
+                turnaroundTimes[index] = endTime - process.arrivalTime;
+            });
+
+            return turnaroundTimes;
+        }
+    });
+</script>
+</body>
+</html>
