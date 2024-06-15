@@ -283,9 +283,9 @@
             const totalWaitingTime = waitingTimes.reduce((acc, cur) => acc + cur, 0);
             const totalTurnaroundTime = turnaroundTimes.reduce((acc, cur) => acc + cur, 0);
             totalTimes.innerHTML = `
-                    <div>Total Waiting Time: ${totalWaitingTime}</div>
-                    <div>Total Turnaround Time: ${totalTurnaroundTime}</div>
-                `;
+                <div>Total Waiting Time: ${totalWaitingTime}</div>
+                <div>Total Turnaround Time: ${totalTurnaroundTime}</div>
+            `;
         });
 
         // FIFO algorithm
@@ -389,27 +389,26 @@
             while (completed < n) {
                 if (queue.length > 0) {
                     let process = queue.shift();
-                    if (process.remainingTime > quantum) {
-                        currentTime += quantum;
-                        process.remainingTime -= quantum;
-                        ganttChart.push({ name: process.name, startTime: currentTime - quantum, duration: quantum });
+                    const executionTime = Math.min(quantum, process.remainingTime);
+                    ganttChart.push({ name: process.name, startTime: currentTime, duration: executionTime });
+                    currentTime += executionTime;
+                    process.remainingTime -= executionTime;
+
+                    if (process.remainingTime > 0) {
+                        // If process is not completed, push it back to the queue
+                        queue.push(process);
                     } else {
-                        currentTime += process.remainingTime;
-                        ganttChart.push({ name: process.name, startTime: currentTime - process.remainingTime, duration: process.remainingTime });
-                        process.remainingTime = 0;
+                        // If process is completed, set its completion time
                         process.completionTime = currentTime;
                         completed++;
                     }
+
                     // Add newly arrived processes to the queue
                     processList.forEach(p => {
                         if (p.arrivalTime <= currentTime && !queue.includes(p) && p.remainingTime > 0) {
                             queue.push(p);
                         }
                     });
-                    // Re-add the current process if it hasn't finished yet
-                    if (process.remainingTime > 0) {
-                        queue.push(process);
-                    }
                 } else {
                     // If the queue is empty, jump to the next available process
                     currentTime++;
@@ -464,3 +463,5 @@
 </script>
 </body>
 </html>
+
+
